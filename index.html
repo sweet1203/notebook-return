@@ -220,6 +220,7 @@
         <button class="btn ghost sm" onclick="adminRefresh()">새로고침</button>
       </div>
     </div>
+    <div class="msg" id="a-msg" style="margin:0 0 12px"></div>
     <div class="stats" id="a-stats"></div>
 
     <h3 style="margin:18px 0 8px">반별 현황</h3>
@@ -246,7 +247,7 @@
     <div class="tbl-wrap">
       <table>
         <thead><tr><th>학번</th><th>이름</th><th class="hide-m">시리얼번호</th><th class="c">노트북</th><th class="c">충전기</th><th class="c">케이블</th>
-          <th>상태</th><th class="hide-m">제출시각</th><th class="hide-m">승인시각</th><th class="hide-m">비고</th></tr></thead>
+          <th>상태</th><th class="hide-m">제출시각</th><th class="hide-m">승인시각</th><th class="hide-m">비고</th><th></th></tr></thead>
         <tbody id="a-body"></tbody>
       </table>
     </div>
@@ -416,6 +417,7 @@ function adminLogin() {
 function adminRefresh() { call('adminLoad', A.pw).then(setAdmin).catch(function (e) { alert(errText(e)); }); }
 function setAdmin(d) {
   A.data = d;
+  if (d.message) showMsg('a-msg', d.message, 'ok'); else hideMsg('a-msg');
   $('a-loaded').textContent = '불러온 시각 ' + d.loadedAt;
   $('a-sheet').href = d.sheetUrl; $('a-xlsx').href = d.xlsxUrl;
   var c = countBy(d.rows);
@@ -452,8 +454,13 @@ function renderAdminList() {
     return '<tr><td>' + esc(r.sid) + '</td><td>' + esc(r.name) + '</td><td class="hide-m muted">' + esc(r.serial) + '</td>' +
       '<td class="c">' + ox(r.notebook, sub) + '</td><td class="c">' + ox(r.charger, sub) + '</td><td class="c">' + ox(r.cable, sub) + '</td>' +
       '<td>' + badge(r.status) + '</td><td class="hide-m muted">' + esc(r.submittedAt) + '</td><td class="hide-m muted">' + esc(r.approvedAt) + '</td>' +
-      '<td class="hide-m muted">' + esc(r.memo) + '</td></tr>';
-  }).join('') || '<tr><td colspan="10" class="c muted" style="padding:24px">해당 학생이 없습니다.</td></tr>';
+      '<td class="hide-m muted">' + esc(r.memo) + '</td>' +
+      '<td>' + (sub ? '<button class="btn ghost sm" style="color:var(--bad)" onclick="adminReset(\'' + r.sid + '\', \'' + esc(r.name) + '\')">제출삭제</button>' : '') + '</td></tr>';
+  }).join('') || '<tr><td colspan="11" class="c muted" style="padding:24px">해당 학생이 없습니다.</td></tr>';
+}
+function adminReset(sid, name) {
+  if (!confirm(sid + ' ' + name + ' 학생의 제출 내역을 삭제할까요?\n(미제출 상태로 돌아가며, 학생이 다시 제출할 수 있습니다)')) return;
+  call('adminReset', A.pw, sid).then(setAdmin).catch(function (e) { showMsg('a-msg', errText(e)); });
 }
 
 /* ---------- 시작 ---------- */
