@@ -72,7 +72,10 @@
   .menu .ic { font-size: 30px; }
   .menu b { display: block; font-size: 18px; }
   .menu span { color: var(--muted); font-size: 13px; font-weight: 400; }
-  .back { background: none; border: 0; color: var(--muted); padding: 0; margin-bottom: 10px; font-weight: 500; font-size: 14px; }
+  .topbar { position: sticky; top: 0; z-index: 5; background: rgba(245,246,248,.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .topbar .in { max-width: 1100px; margin: 0 auto; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar .home { background: #fff; border: 1px solid #cfd4dc; color: var(--text); padding: 7px 12px; font-size: 14px; }
+  .topbar .t { color: var(--muted); font-size: 13px; font-weight: 600; }
   .summary-tbl td.num { text-align: right; }
   @media (max-width: 520px) {
     .stats { grid-template-columns: repeat(2, 1fr); }
@@ -82,6 +85,13 @@
 </head>
 <body>
 <div class="loading" id="loading">처리 중…</div>
+
+<div class="topbar hidden" id="topbar">
+  <div class="in">
+    <button class="home" onclick="goHome()">🏠 홈</button>
+    <span class="t">2026 고3 노트북 반납</span>
+  </div>
+</div>
 
 <!-- ================= 첫 화면 ================= -->
 <div class="wrap hidden" id="v-home">
@@ -96,7 +106,6 @@
 
 <!-- ================= 학생 ================= -->
 <div class="wrap hidden" id="v-student">
-  <button class="back" onclick="go('home')">← 처음으로</button>
   <h1>노트북 반납 신청</h1>
   <p class="sub">2026 고3 · 반납하는 물품을 선택하고 제출하세요. 담임선생님이 확인 후 승인합니다.</p>
 
@@ -135,7 +144,6 @@
 <!-- ================= 담임 ================= -->
 <div class="wrap wide hidden" id="v-teacher">
   <div id="t-login" class="wrap" style="padding:0">
-    <button class="back" onclick="go('home')">← 처음으로</button>
     <h1>담임선생님 승인</h1>
     <p class="sub">이름과 비밀번호를 입력하면 담당 반 학생 목록이 열립니다.</p>
     <div class="card">
@@ -195,7 +203,6 @@
 <!-- ================= 관리자 ================= -->
 <div class="wrap wide hidden" id="v-admin">
   <div id="a-login" class="wrap" style="padding:0">
-    <button class="back" onclick="go('home')">← 처음으로</button>
     <h1>최종 수합 (관리자)</h1>
     <p class="sub">관리자 비밀번호를 입력하세요.</p>
     <div class="card">
@@ -466,7 +473,16 @@ function adminReset(sid, name) {
 /* ---------- 시작 ---------- */
 function go(mode) {
   ['home', 'student', 'teacher', 'admin'].forEach(function (m) { $('v-' + m).classList.toggle('hidden', m !== mode); });
+  $('topbar').classList.toggle('hidden', mode === 'home');
   window.scrollTo(0, 0);
+}
+// 홈으로 갈 때 로그인·입력 내용은 지움 (공용 PC 대비)
+function goHome() {
+  studentReset();
+  teacherLogout();
+  A = { pw: '', data: null }; $('a-pw').value = '';
+  $('a-main').classList.add('hidden'); $('a-login').classList.remove('hidden');
+  go('home');
 }
 go(['student', 'teacher', 'admin'].indexOf(MODE) >= 0 ? MODE : 'home');
 </script>
