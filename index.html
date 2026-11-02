@@ -76,6 +76,7 @@
   .roll label.cell { cursor: pointer; }
   .roll input[type=checkbox] { width: 24px; height: 24px; accent-color: var(--ok); cursor: pointer; }
   .roll tr.dirty td { background: var(--warn-weak); }
+  .roll td.all, .roll th.all { border-right: 1px solid var(--line); }
   .roll tr.done td { background: #f6fdf8; }
   .help { font-size: 13px; color: var(--muted); background: var(--card); border: 1px dashed #cfd4dc; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
   .savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
@@ -133,15 +134,15 @@
   </div>
   <div class="stats" id="c-stats"></div>
   <div class="help">
-    ✔ 학생 <b>이름을 누르면</b> 노트북·충전기·케이블이 한 번에 체크돼요. 물품별로 따로 체크할 수도 있어요.<br>
+    ✔ <b>[모두]</b>를 체크하면 노트북·충전기·케이블이 한 번에 체크돼요. 물품별로 따로 체크할 수도 있어요.<br>
     ✔ 다 체크한 뒤 아래 <b>[확인]</b>을 눌러야 저장돼요. 저장 전인 줄은 노란색으로 보여요.<br>
-    ✔ 다른 기기에서 바꾼 내용을 보려면 <b>[조회]</b>를 눌러 주세요.
+    ✔ 잘못 저장했으면 체크를 풀고 다시 <b>[확인]</b>을 누르면 돼요. 최신 내용은 <b>[조회]</b>로 다시 불러와요.
   </div>
   <div class="msg" id="c-msg" style="margin:0 0 12px"></div>
   <div class="tbl-wrap">
     <table class="roll">
       <thead><tr>
-        <th class="c">번호</th><th>이름</th><th class="c">노트북</th><th class="c">충전기</th><th class="c">케이블</th><th>상태</th>
+        <th class="c">번호</th><th>이름</th><th class="c all">모두</th><th class="c">노트북</th><th class="c">충전기</th><th class="c">케이블</th><th>상태</th>
       </tr></thead>
       <tbody id="c-body"></tbody>
     </table>
@@ -151,7 +152,6 @@
   <div class="in">
     <div class="info" id="c-saveinfo"></div>
     <div class="row">
-      <button class="btn ghost" onclick="classUndo()">되돌리기</button>
       <button class="btn ok" onclick="classSave()">✅ 확인</button>
     </div>
   </div>
@@ -296,7 +296,9 @@ function renderClass() {
     return '<tr class="' + (d ? 'dirty' : any ? 'done' : '') + '">' +
       '<td class="c no"><div class="cell">' + esc(r.no) + '</div></td>' +
       '<td><div class="cell nm" onclick="toggleRow(' + i + ')">' + esc(r.name) +
-        (r.memo ? '&nbsp;<span class="muted">(' + esc(r.memo) + ')</span>' : '') + '</div></td>' +
+        '</div></td>' +
+      '<td class="c all"><label class="cell"><input type="checkbox" ' + (r.notebook && r.charger && r.cable ? 'checked' : '') +
+        ' onchange="setAll(' + i + ',this.checked)"></label></td>' +
       ITEMS.map(function (k) {
         return '<td class="c"><label class="cell"><input type="checkbox" ' + (r[k] ? 'checked' : '') +
           ' onchange="setItem(' + i + ',\'' + k + '\',this.checked)"></label></td>';
@@ -312,11 +314,11 @@ function toggleRow(i) {
   ITEMS.forEach(function (k) { r[k] = !all; });
   renderClass();
 }
-function setItem(i, k, v) { C.rows[i][k] = v; renderClass(); }
-function classUndo() {
-  C.rows.forEach(function (r) { ITEMS.forEach(function (k) { r[k] = C.orig[r.sid][k]; }); });
+function setAll(i, v) {
+  ITEMS.forEach(function (k) { C.rows[i][k] = v; });
   renderClass();
 }
+function setItem(i, k, v) { C.rows[i][k] = v; renderClass(); }
 function classSave() {
   var changes = dirtyRows().map(function (r) { return { sid: r.sid, notebook: r.notebook, charger: r.charger, cable: r.cable }; });
   if (!changes.length) return;
