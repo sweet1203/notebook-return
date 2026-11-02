@@ -65,6 +65,14 @@
   .loading { position: fixed; inset: 0; background: rgba(255,255,255,.6); display: none; align-items: center; justify-content: center; z-index: 10; font-weight: 600; }
   .loading.show { display: flex; }
   .hidden { display: none !important; }
+  .menu { display: grid; gap: 12px; }
+  .menu button { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--card);
+    border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; color: var(--text); }
+  .menu button:hover { border-color: var(--primary); background: var(--primary-weak); }
+  .menu .ic { font-size: 30px; }
+  .menu b { display: block; font-size: 18px; }
+  .menu span { color: var(--muted); font-size: 13px; font-weight: 400; }
+  .back { background: none; border: 0; color: var(--muted); padding: 0; margin-bottom: 10px; font-weight: 500; font-size: 14px; }
   .summary-tbl td.num { text-align: right; }
   @media (max-width: 520px) {
     .stats { grid-template-columns: repeat(2, 1fr); }
@@ -75,8 +83,20 @@
 <body>
 <div class="loading" id="loading">처리 중…</div>
 
+<!-- ================= 첫 화면 ================= -->
+<div class="wrap hidden" id="v-home">
+  <h1>2026 고3 노트북 반납</h1>
+  <p class="sub">해당하는 메뉴를 선택하세요.</p>
+  <div class="menu">
+    <button onclick="go('student')"><span class="ic">🎒</span><div><b>학생</b><span>반납 물품 제출 · 내 제출 상태 확인</span></div></button>
+    <button onclick="go('teacher')"><span class="ic">🧑‍🏫</span><div><b>담임선생님</b><span>우리 반 반납 확인 · 승인</span></div></button>
+    <button onclick="go('admin')"><span class="ic">🗂️</span><div><b>관리자</b><span>전체 반납 현황 · 최종 수합</span></div></button>
+  </div>
+</div>
+
 <!-- ================= 학생 ================= -->
 <div class="wrap hidden" id="v-student">
+  <button class="back" onclick="go('home')">← 처음으로</button>
   <h1>노트북 반납 신청</h1>
   <p class="sub">2026 고3 · 반납하는 물품을 선택하고 제출하세요. 담임선생님이 확인 후 승인합니다.</p>
 
@@ -115,9 +135,14 @@
 <!-- ================= 담임 ================= -->
 <div class="wrap wide hidden" id="v-teacher">
   <div id="t-login" class="wrap" style="padding:0">
+    <button class="back" onclick="go('home')">← 처음으로</button>
     <h1>담임선생님 승인</h1>
-    <p class="sub">비밀번호를 입력하면 담당 반 학생 목록이 열립니다.</p>
+    <p class="sub">이름과 비밀번호를 입력하면 담당 반 학생 목록이 열립니다.</p>
     <div class="card">
+      <div class="field">
+        <label class="f" for="t-name">담임선생님 이름</label>
+        <input type="text" id="t-name" placeholder="예: 홍길동" autocomplete="off">
+      </div>
       <div class="field">
         <label class="f" for="t-pw">비밀번호</label>
         <input type="password" id="t-pw" inputmode="numeric" onkeydown="if(event.key==='Enter')teacherLogin()">
@@ -170,6 +195,7 @@
 <!-- ================= 관리자 ================= -->
 <div class="wrap wide hidden" id="v-admin">
   <div id="a-login" class="wrap" style="padding:0">
+    <button class="back" onclick="go('home')">← 처음으로</button>
     <h1>최종 수합 (관리자)</h1>
     <p class="sub">관리자 비밀번호를 입력하세요.</p>
     <div class="card">
@@ -230,8 +256,8 @@
 <script>
 // Apps Script 웹앱 URL (배포 주소가 바뀌면 여기만 고치면 됨)
 var API_URL = 'https://script.google.com/macros/s/AKfycbw8U-zc_0IVgGwgDvb8eJkNou4Hux2mOziuaSoScFKe0Jdo1DyGcMlxWmow7gFDkKuXGw/exec';
-var MODE = new URLSearchParams(location.search).get('mode') || 'student';
-var T = { pw: '', data: null };
+var MODE = new URLSearchParams(location.search).get('mode') || 'home';
+var T = { auth: null, data: null };
 var A = { pw: '', data: null };
 
 function $(id) { return document.getElementById(id); }
@@ -311,19 +337,20 @@ function studentReset() {
 /* ---------- 담임 ---------- */
 function teacherLogin() {
   hideMsg('t-login-msg');
-  var pw = $('t-pw').value.trim();
-  if (!pw) return showMsg('t-login-msg', '비밀번호를 입력해 주세요.');
-  call('teacherLoad', pw).then(function (d) {
-    T.pw = pw; setTeacher(d);
+  var auth = { name: $('t-name').value.trim(), pw: $('t-pw').value.trim() };
+  if (!auth.name) return showMsg('t-login-msg', '이름을 입력해 주세요.');
+  if (!auth.pw) return showMsg('t-login-msg', '비밀번호를 입력해 주세요.');
+  call('teacherLoad', auth).then(function (d) {
+    T.auth = auth; setTeacher(d);
     $('t-login').classList.add('hidden'); $('t-main').classList.remove('hidden');
   }).catch(function (e) { showMsg('t-login-msg', errText(e)); });
 }
 function teacherLogout() {
-  T = { pw: '', data: null }; $('t-pw').value = '';
+  T = { auth: null, data: null }; $('t-pw').value = '';
   $('t-main').classList.add('hidden'); $('t-login').classList.remove('hidden');
 }
 function teacherRefresh() {
-  call('teacherLoad', T.pw).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
+  call('teacherLoad', T.auth).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
 }
 function setTeacher(d) {
   T.data = d;
@@ -359,7 +386,7 @@ function renderTeacher() {
 }
 function toggleAll(on) { document.querySelectorAll('.t-chk').forEach(function (c) { c.checked = on; }); }
 function teacherApprove(sids) {
-  call('teacherApprove', T.pw, sids).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
+  call('teacherApprove', T.auth, sids).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
 }
 function teacherApproveSelected() {
   var sids = Array.prototype.map.call(document.querySelectorAll('.t-chk:checked'), function (c) { return c.value; });
@@ -373,7 +400,7 @@ function teacherApproveAll() {
 }
 function teacherUnapprove(sid) {
   if (!confirm(sid + ' 학생의 승인을 취소할까요? (승인대기로 돌아갑니다)')) return;
-  call('teacherUnapprove', T.pw, sid).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
+  call('teacherUnapprove', T.auth, sid).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
 }
 
 /* ---------- 관리자 ---------- */
@@ -430,7 +457,11 @@ function renderAdminList() {
 }
 
 /* ---------- 시작 ---------- */
-$('v-' + (MODE === 'teacher' || MODE === 'admin' ? MODE : 'student')).classList.remove('hidden');
+function go(mode) {
+  ['home', 'student', 'teacher', 'admin'].forEach(function (m) { $('v-' + m).classList.toggle('hidden', m !== mode); });
+  window.scrollTo(0, 0);
+}
+go(['student', 'teacher', 'admin'].indexOf(MODE) >= 0 ? MODE : 'home');
 </script>
 </body>
 </html>
