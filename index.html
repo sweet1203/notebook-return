@@ -86,10 +86,10 @@
 <body>
 <div class="loading" id="loading">처리 중…</div>
 
-<div class="topbar hidden" id="topbar">
+<div class="topbar" id="topbar">
   <div class="in">
-    <button class="home" onclick="goHome()">🏠 홈</button>
     <span class="t">2026 고3 노트북 반납</span>
+    <button class="home" onclick="goHome()">🏠 홈</button>
   </div>
 </div>
 
@@ -473,7 +473,6 @@ function adminReset(sid, name) {
 /* ---------- 시작 ---------- */
 function go(mode) {
   ['home', 'student', 'teacher', 'admin'].forEach(function (m) { $('v-' + m).classList.toggle('hidden', m !== mode); });
-  $('topbar').classList.toggle('hidden', mode === 'home');
   window.scrollTo(0, 0);
 }
 // 홈으로 갈 때 로그인·입력 내용은 지움 (공용 PC 대비)
