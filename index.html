@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>노트북 반납</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e5e7eb;
+    --primary: #2f5bea; --primary-weak: #e8eefe;
+    --ok: #15803d; --ok-weak: #dcfce7; --wait: #b45309; --wait-weak: #fef3c7;
+    --none: #6b7280; --none-weak: #f1f5f9; --bad: #b91c1c; --bad-weak: #fee2e2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px 48px; }
+  .wrap.wide { max-width: 1100px; }
+  h1 { font-size: 22px; margin: 4px 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 18px; font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+  label.f { display: block; font-weight: 600; margin: 0 0 6px; font-size: 14px; }
+  input[type=text], input[type=password], input[type=tel], select {
+    width: 100%; padding: 12px 12px; border: 1px solid #cfd4dc; border-radius: 10px; font-size: 16px; background: #fff; }
+  input:focus, select:focus { outline: 2px solid var(--primary); border-color: transparent; }
+  .field { margin-bottom: 14px; }
+  .items { display: grid; gap: 8px; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #cfd4dc; border-radius: 10px; cursor: pointer; user-select: none; }
+  .item input { width: 20px; height: 20px; accent-color: var(--primary); }
+  .item.on { border-color: var(--primary); background: var(--primary-weak); }
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid transparent; padding: 11px 16px; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .btn { background: var(--primary); color: #fff; }
+  .btn.block { width: 100%; padding: 14px; font-size: 16px; }
+  .btn.ghost { background: #fff; color: var(--text); border-color: #cfd4dc; }
+  .btn.ok { background: var(--ok); }
+  .btn.sm { padding: 6px 10px; font-size: 13px; border-radius: 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .msg { padding: 12px 14px; border-radius: 10px; margin-top: 12px; font-size: 14px; display: none; }
+  .msg.show { display: block; }
+  .msg.err { background: var(--bad-weak); color: var(--bad); }
+  .msg.ok { background: var(--ok-weak); color: var(--ok); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .b-미제출 { background: var(--none-weak); color: var(--none); }
+  .b-승인대기 { background: var(--wait-weak); color: var(--wait); }
+  .b-승인완료 { background: var(--ok-weak); color: var(--ok); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 22px; }
+  .stat span { color: var(--muted); font-size: 12px; }
+  .tbl-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  th { background: #fafbfc; font-size: 13px; color: var(--muted); position: sticky; top: 0; }
+  td.c, th.c { text-align: center; }
+  tr:last-child td { border-bottom: 0; }
+  .o { color: var(--ok); font-weight: 700; }
+  .x { color: var(--bad); font-weight: 700; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .toolbar select, .toolbar input { width: auto; padding: 8px 10px; font-size: 14px; }
+  .done-box { text-align: center; padding: 26px 18px; }
+  .done-box .big { font-size: 40px; }
+  .loading { position: fixed; inset: 0; background: rgba(255,255,255,.6); display: none; align-items: center; justify-content: center; z-index: 10; font-weight: 600; }
+  .loading.show { display: flex; }
+  .hidden { display: none !important; }
+  .summary-tbl td.num { text-align: right; }
+  @media (max-width: 520px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .hide-m { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">처리 중…</div>
+
+<!-- ================= 학생 ================= -->
+<div class="wrap hidden" id="v-student">
+  <h1>노트북 반납 신청</h1>
+  <p class="sub">2026 고3 · 반납하는 물품을 선택하고 제출하세요. 담임선생님이 확인 후 승인합니다.</p>
+
+  <div class="card" id="s-form">
+    <div class="field">
+      <label class="f" for="s-sid">학번 (5자리)</label>
+      <input type="tel" id="s-sid" maxlength="5" inputmode="numeric" placeholder="예: 30101" autocomplete="off">
+    </div>
+    <div class="field">
+      <label class="f" for="s-name">이름</label>
+      <input type="text" id="s-name" placeholder="예: 홍길동" autocomplete="off">
+    </div>
+    <div class="field">
+      <label class="f">반납 물품 (해당 항목 모두 체크)</label>
+      <div class="items">
+        <label class="item"><input type="checkbox" id="s-notebook"> 노트북</label>
+        <label class="item"><input type="checkbox" id="s-charger"> 충전기</label>
+        <label class="item"><input type="checkbox" id="s-cable"> 충전케이블</label>
+      </div>
+    </div>
+    <button class="btn block" onclick="studentSubmit()">제출하기</button>
+    <div class="row" style="justify-content:center;margin-top:10px">
+      <button class="btn ghost sm" onclick="studentCheck()">내 제출 상태 확인</button>
+    </div>
+    <div class="msg" id="s-msg"></div>
+  </div>
+
+  <div class="card done-box hidden" id="s-done">
+    <div class="big">✅</div>
+    <h2 style="margin:6px 0">제출되었습니다</h2>
+    <div id="s-done-body" style="margin:10px 0 16px"></div>
+    <button class="btn ghost" onclick="studentReset()">처음으로</button>
+  </div>
+</div>
+
+<!-- ================= 담임 ================= -->
+<div class="wrap wide hidden" id="v-teacher">
+  <div id="t-login" class="wrap" style="padding:0">
+    <h1>담임선생님 승인</h1>
+    <p class="sub">비밀번호를 입력하면 담당 반 학생 목록이 열립니다.</p>
+    <div class="card">
+      <div class="field">
+        <label class="f" for="t-pw">비밀번호</label>
+        <input type="password" id="t-pw" inputmode="numeric" onkeydown="if(event.key==='Enter')teacherLogin()">
+      </div>
+      <button class="btn block" onclick="teacherLogin()">들어가기</button>
+      <div class="msg" id="t-login-msg"></div>
+    </div>
+  </div>
+
+  <div id="t-main" class="hidden">
+    <div class="toolbar">
+      <div>
+        <h1 id="t-title" style="margin:0"></h1>
+        <div class="muted" id="t-loaded"></div>
+      </div>
+      <div class="row">
+        <button class="btn ghost sm" onclick="teacherRefresh()">새로고침</button>
+        <button class="btn ghost sm" onclick="teacherLogout()">나가기</button>
+      </div>
+    </div>
+    <div class="stats" id="t-stats"></div>
+    <div class="toolbar">
+      <div class="row">
+        <select id="t-filter" onchange="renderTeacher()">
+          <option value="">전체 보기</option>
+          <option value="승인대기">승인대기만</option>
+          <option value="미제출">미제출만</option>
+          <option value="승인완료">승인완료만</option>
+        </select>
+      </div>
+      <div class="row">
+        <button class="btn sm" onclick="teacherApproveSelected()">선택 승인</button>
+        <button class="btn ok sm" onclick="teacherApproveAll()">승인대기 일괄승인</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th class="c"><input type="checkbox" id="t-checkall" onchange="toggleAll(this.checked)" title="승인대기 전체 선택"></th>
+          <th>학번</th><th>이름</th><th class="c">노트북</th><th class="c">충전기</th><th class="c">케이블</th>
+          <th>상태</th><th class="hide-m">제출시각</th><th></th>
+        </tr></thead>
+        <tbody id="t-body"></tbody>
+      </table>
+    </div>
+    <div class="msg" id="t-msg"></div>
+  </div>
+</div>
+
+<!-- ================= 관리자 ================= -->
+<div class="wrap wide hidden" id="v-admin">
+  <div id="a-login" class="wrap" style="padding:0">
+    <h1>최종 수합 (관리자)</h1>
+    <p class="sub">관리자 비밀번호를 입력하세요.</p>
+    <div class="card">
+      <div class="field">
+        <label class="f" for="a-pw">관리자 비밀번호</label>
+        <input type="password" id="a-pw" onkeydown="if(event.key==='Enter')adminLogin()">
+      </div>
+      <button class="btn block" onclick="adminLogin()">들어가기</button>
+      <div class="msg" id="a-login-msg"></div>
+    </div>
+  </div>
+
+  <div id="a-main" class="hidden">
+    <div class="toolbar">
+      <div>
+        <h1 style="margin:0">노트북 반납 최종 수합</h1>
+        <div class="muted" id="a-loaded"></div>
+      </div>
+      <div class="row">
+        <a id="a-sheet" target="_blank"><button class="btn ghost sm">스프레드시트 열기</button></a>
+        <a id="a-xlsx" target="_blank"><button class="btn ghost sm">엑셀(.xlsx) 다운로드</button></a>
+        <button class="btn ghost sm" onclick="adminRefresh()">새로고침</button>
+      </div>
+    </div>
+    <div class="stats" id="a-stats"></div>
+
+    <h3 style="margin:18px 0 8px">반별 현황</h3>
+    <div class="tbl-wrap" style="margin-bottom:18px">
+      <table class="summary-tbl">
+        <thead><tr><th>반</th><th>담임</th><th class="c">인원</th><th class="c">승인완료</th><th class="c">승인대기</th><th class="c">미제출</th>
+          <th class="c">노트북</th><th class="c">충전기</th><th class="c">케이블</th><th class="c">진행률</th></tr></thead>
+        <tbody id="a-summary"></tbody>
+      </table>
+    </div>
+
+    <h3 style="margin:18px 0 8px">학생별 명단</h3>
+    <div class="toolbar">
+      <div class="row">
+        <select id="a-cls" onchange="renderAdminList()"><option value="">전체 반</option></select>
+        <select id="a-st" onchange="renderAdminList()">
+          <option value="">전체 상태</option><option>승인완료</option><option>승인대기</option><option>미제출</option>
+          <option value="누락">물품 누락(승인완료 중)</option>
+        </select>
+        <input type="text" id="a-q" placeholder="이름·학번 검색" oninput="renderAdminList()">
+      </div>
+      <div class="muted" id="a-count"></div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>학번</th><th>이름</th><th class="hide-m">시리얼번호</th><th class="c">노트북</th><th class="c">충전기</th><th class="c">케이블</th>
+          <th>상태</th><th class="hide-m">제출시각</th><th class="hide-m">승인시각</th><th class="hide-m">비고</th></tr></thead>
+        <tbody id="a-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// Apps Script 웹앱 URL (배포 주소가 바뀌면 여기만 고치면 됨)
+var API_URL = 'https://script.google.com/macros/s/AKfycbw8U-zc_0IVgGwgDvb8eJkNou4Hux2mOziuaSoScFKe0Jdo1DyGcMlxWmow7gFDkKuXGw/exec';
+var MODE = new URLSearchParams(location.search).get('mode') || 'student';
+var T = { pw: '', data: null };
+var A = { pw: '', data: null };
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+  return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function badge(st) { return '<span class="badge b-' + st + '">' + st + '</span>'; }
+function ox(v, show) { return show ? (v ? '<span class="o">O</span>' : '<span class="x">X</span>') : '<span class="muted">-</span>'; }
+function showMsg(id, text, type) { var m = $(id); m.className = 'msg show ' + (type || 'err'); m.textContent = text; }
+function hideMsg(id) { $(id).className = 'msg'; }
+function loading(on) { $('loading').classList.toggle('show', !!on); }
+
+// Apps Script API 호출. text/plain 으로 보내야 CORS 사전요청 없이 동작함
+function call(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  loading(true);
+  return fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn: fn, args: args })
+  }).then(function (res) { return res.json(); })
+    .catch(function () { throw new Error('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.'); })
+    .then(function (r) {
+      loading(false);
+      if (!r.ok) throw new Error(r.error);
+      return r.data;
+    }, function (e) { loading(false); throw e; });
+}
+function errText(e) { return (e && e.message ? e.message : String(e)).replace(/^Error:\s*/, ''); }
+
+/* ---------- 학생 ---------- */
+['s-notebook', 's-charger', 's-cable'].forEach(function (id) {
+  $(id).addEventListener('change', function () { this.parentNode.classList.toggle('on', this.checked); });
+});
+$('s-sid').addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 5); });
+
+function itemsText(o) {
+  var a = [];
+  if (o.notebook) a.push('노트북'); if (o.charger) a.push('충전기'); if (o.cable) a.push('충전케이블');
+  return a.length ? a.join(', ') : '없음';
+}
+
+function studentSubmit() {
+  hideMsg('s-msg');
+  var sid = $('s-sid').value.trim(), name = $('s-name').value.trim();
+  var items = { notebook: $('s-notebook').checked, charger: $('s-charger').checked, cable: $('s-cable').checked };
+  if (!/^\d{5}$/.test(sid)) return showMsg('s-msg', '학번 5자리를 입력해 주세요.');
+  if (!name) return showMsg('s-msg', '이름을 입력해 주세요.');
+  if (!items.notebook && !items.charger && !items.cable) return showMsg('s-msg', '반납 물품을 1개 이상 선택해 주세요.');
+  if (!confirm(sid + ' ' + name + '\n반납 물품: ' + itemsText(items) + '\n\n제출할까요?')) return;
+  call('submitReturn', sid, name, items).then(function (r) {
+    $('s-form').classList.add('hidden');
+    $('s-done').classList.remove('hidden');
+    $('s-done-body').innerHTML = '<b>' + esc(r.sid + ' ' + r.name) + '</b><br>반납 물품: ' + esc(itemsText(r)) +
+      '<br>' + badge(r.status) + '<p class="muted">담임선생님께 물품을 전달하면 확인 후 승인됩니다.<br>잘못 체크했다면 승인 전까지 다시 제출할 수 있어요.</p>';
+  }).catch(function (e) { showMsg('s-msg', errText(e)); });
+}
+
+function studentCheck() {
+  hideMsg('s-msg');
+  var sid = $('s-sid').value.trim(), name = $('s-name').value.trim();
+  if (!/^\d{5}$/.test(sid) || !name) return showMsg('s-msg', '학번과 이름을 먼저 입력해 주세요.');
+  call('getMyStatus', sid, name).then(function (r) {
+    var t = r.status === '미제출' ? '아직 제출하지 않았습니다.'
+      : '상태: ' + r.status + ' · 반납 물품: ' + itemsText(r) + ' (제출 ' + r.submittedAt + ')';
+    showMsg('s-msg', t, r.status === '미제출' ? 'err' : 'ok');
+  }).catch(function (e) { showMsg('s-msg', errText(e)); });
+}
+
+function studentReset() {
+  ['s-sid', 's-name'].forEach(function (id) { $(id).value = ''; });
+  ['s-notebook', 's-charger', 's-cable'].forEach(function (id) { $(id).checked = false; $(id).parentNode.classList.remove('on'); });
+  hideMsg('s-msg');
+  $('s-done').classList.add('hidden');
+  $('s-form').classList.remove('hidden');
+}
+
+/* ---------- 담임 ---------- */
+function teacherLogin() {
+  hideMsg('t-login-msg');
+  var pw = $('t-pw').value.trim();
+  if (!pw) return showMsg('t-login-msg', '비밀번호를 입력해 주세요.');
+  call('teacherLoad', pw).then(function (d) {
+    T.pw = pw; setTeacher(d);
+    $('t-login').classList.add('hidden'); $('t-main').classList.remove('hidden');
+  }).catch(function (e) { showMsg('t-login-msg', errText(e)); });
+}
+function teacherLogout() {
+  T = { pw: '', data: null }; $('t-pw').value = '';
+  $('t-main').classList.add('hidden'); $('t-login').classList.remove('hidden');
+}
+function teacherRefresh() {
+  call('teacherLoad', T.pw).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
+}
+function setTeacher(d) {
+  T.data = d;
+  $('t-title').textContent = '3학년 ' + d.cls + '반' + (d.teacher ? ' · ' + d.teacher + ' 선생님' : '');
+  $('t-loaded').textContent = '불러온 시각 ' + d.loadedAt;
+  if (d.message) showMsg('t-msg', d.message, 'ok'); else hideMsg('t-msg');
+  renderTeacher();
+}
+function countBy(rows) {
+  var c = { total: rows.length, 미제출: 0, 승인대기: 0, 승인완료: 0, notebook: 0, charger: 0, cable: 0 };
+  rows.forEach(function (r) {
+    c[r.status]++;
+    if (r.status === '승인완료') { if (r.notebook) c.notebook++; if (r.charger) c.charger++; if (r.cable) c.cable++; }
+  });
+  return c;
+}
+function statBox(n, label) { return '<div class="stat"><b>' + n + '</b><span>' + label + '</span></div>'; }
+
+function renderTeacher() {
+  var rows = T.data.rows, c = countBy(rows), f = $('t-filter').value;
+  $('t-stats').innerHTML = statBox(c.total, '전체') + statBox(c.승인대기, '승인대기') + statBox(c.승인완료, '승인완료') + statBox(c.미제출, '미제출');
+  $('t-checkall').checked = false;
+  $('t-body').innerHTML = rows.filter(function (r) { return !f || r.status === f; }).map(function (r) {
+    var sub = r.status !== '미제출';
+    var act = r.status === '승인대기' ? '<button class="btn ok sm" onclick="teacherApprove([\'' + r.sid + '\'])">승인</button>'
+      : r.status === '승인완료' ? '<button class="btn ghost sm" onclick="teacherUnapprove(\'' + r.sid + '\')">승인취소</button>' : '';
+    return '<tr>' +
+      '<td class="c">' + (r.status === '승인대기' ? '<input type="checkbox" class="t-chk" value="' + esc(r.sid) + '">' : '') + '</td>' +
+      '<td>' + esc(r.sid) + '</td><td>' + esc(r.name) + (r.memo ? ' <span class="muted">(' + esc(r.memo) + ')</span>' : '') + '</td>' +
+      '<td class="c">' + ox(r.notebook, sub) + '</td><td class="c">' + ox(r.charger, sub) + '</td><td class="c">' + ox(r.cable, sub) + '</td>' +
+      '<td>' + badge(r.status) + '</td><td class="hide-m muted">' + esc(r.submittedAt) + '</td><td>' + act + '</td></tr>';
+  }).join('') || '<tr><td colspan="9" class="c muted" style="padding:24px">해당 학생이 없습니다.</td></tr>';
+}
+function toggleAll(on) { document.querySelectorAll('.t-chk').forEach(function (c) { c.checked = on; }); }
+function teacherApprove(sids) {
+  call('teacherApprove', T.pw, sids).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
+}
+function teacherApproveSelected() {
+  var sids = Array.prototype.map.call(document.querySelectorAll('.t-chk:checked'), function (c) { return c.value; });
+  if (!sids.length) return showMsg('t-msg', '승인할 학생을 선택해 주세요.');
+  if (confirm(sids.length + '명을 승인할까요?')) teacherApprove(sids);
+}
+function teacherApproveAll() {
+  var sids = T.data.rows.filter(function (r) { return r.status === '승인대기'; }).map(function (r) { return r.sid; });
+  if (!sids.length) return showMsg('t-msg', '승인대기 중인 학생이 없습니다.');
+  if (confirm('승인대기 ' + sids.length + '명을 모두 승인할까요?\n(물품을 실제로 받았는지 확인 후 승인해 주세요)')) teacherApprove(sids);
+}
+function teacherUnapprove(sid) {
+  if (!confirm(sid + ' 학생의 승인을 취소할까요? (승인대기로 돌아갑니다)')) return;
+  call('teacherUnapprove', T.pw, sid).then(setTeacher).catch(function (e) { showMsg('t-msg', errText(e)); });
+}
+
+/* ---------- 관리자 ---------- */
+function adminLogin() {
+  hideMsg('a-login-msg');
+  var pw = $('a-pw').value.trim();
+  if (!pw) return showMsg('a-login-msg', '비밀번호를 입력해 주세요.');
+  call('adminLoad', pw).then(function (d) {
+    A.pw = pw; setAdmin(d);
+    $('a-login').classList.add('hidden'); $('a-main').classList.remove('hidden');
+  }).catch(function (e) { showMsg('a-login-msg', errText(e)); });
+}
+function adminRefresh() { call('adminLoad', A.pw).then(setAdmin).catch(function (e) { alert(errText(e)); }); }
+function setAdmin(d) {
+  A.data = d;
+  $('a-loaded').textContent = '불러온 시각 ' + d.loadedAt;
+  $('a-sheet').href = d.sheetUrl; $('a-xlsx').href = d.xlsxUrl;
+  var c = countBy(d.rows);
+  $('a-stats').innerHTML = statBox(c.total, '전체 학생') + statBox(c.승인완료, '승인완료') + statBox(c.승인대기, '승인대기') + statBox(c.미제출, '미제출');
+
+  var classes = [];
+  d.rows.forEach(function (r) { if (classes.indexOf(r.cls) < 0) classes.push(r.cls); });
+  classes.sort(function (a, b) { return a - b; });
+  var sel = $('a-cls'), cur = sel.value;
+  sel.innerHTML = '<option value="">전체 반</option>' + classes.map(function (k) { return '<option value="' + k + '">' + k + '반</option>'; }).join('');
+  sel.value = cur;
+
+  $('a-summary').innerHTML = classes.map(function (k) {
+    var cc = countBy(d.rows.filter(function (r) { return r.cls === k; }));
+    var pct = cc.total ? Math.round(cc.승인완료 / cc.total * 100) : 0;
+    return '<tr><td>' + k + '반</td><td>' + esc(d.teachers[k] || '') + '</td><td class="c">' + cc.total + '</td>' +
+      '<td class="c">' + cc.승인완료 + '</td><td class="c">' + cc.승인대기 + '</td><td class="c">' + (cc.미제출 ? '<span class="x">' + cc.미제출 + '</span>' : 0) + '</td>' +
+      '<td class="c">' + cc.notebook + '</td><td class="c">' + cc.charger + '</td><td class="c">' + cc.cable + '</td><td class="c">' + pct + '%</td></tr>';
+  }).join('');
+  renderAdminList();
+}
+function renderAdminList() {
+  var k = $('a-cls').value, st = $('a-st').value, q = $('a-q').value.trim();
+  var rows = A.data.rows.filter(function (r) {
+    if (k && r.cls !== k) return false;
+    if (st === '누락') { if (r.status !== '승인완료' || (r.notebook && r.charger && r.cable)) return false; }
+    else if (st && r.status !== st) return false;
+    if (q && (r.name + r.sid).indexOf(q) < 0) return false;
+    return true;
+  });
+  $('a-count').textContent = rows.length + '명';
+  $('a-body').innerHTML = rows.map(function (r) {
+    var sub = r.status !== '미제출';
+    return '<tr><td>' + esc(r.sid) + '</td><td>' + esc(r.name) + '</td><td class="hide-m muted">' + esc(r.serial) + '</td>' +
+      '<td class="c">' + ox(r.notebook, sub) + '</td><td class="c">' + ox(r.charger, sub) + '</td><td class="c">' + ox(r.cable, sub) + '</td>' +
+      '<td>' + badge(r.status) + '</td><td class="hide-m muted">' + esc(r.submittedAt) + '</td><td class="hide-m muted">' + esc(r.approvedAt) + '</td>' +
+      '<td class="hide-m muted">' + esc(r.memo) + '</td></tr>';
+  }).join('') || '<tr><td colspan="10" class="c muted" style="padding:24px">해당 학생이 없습니다.</td></tr>';
+}
+
+/* ---------- 시작 ---------- */
+$('v-' + (MODE === 'teacher' || MODE === 'admin' ? MODE : 'student')).classList.remove('hidden');
+</script>
+</body>
+</html>
